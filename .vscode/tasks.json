@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Flash STM32 (no debug)",
+      "type": "shell",
+      "command": "C:\\ST\\STM32CubeCLT_1.20.0\\STM32CubeProgrammer\\bin\\STM32_Programmer_CLI.exe",
+      "args": [
+        "-c", "port=SWD",
+        "-w", "${workspaceFolder}/build/debug/F411RE_OTA.elf",
+        "-v",
+        "-rst"
+      ],
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}
