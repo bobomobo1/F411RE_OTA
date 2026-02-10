@@ -19,7 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_hal_gpio.h"
-
+#include <stdio.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -37,7 +37,8 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#define GETCHAR_PROTOTYPE int __io_getchar (void)
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -102,6 +103,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+    printf("Hello, World!\r\n");
     HAL_Delay(1000);
   }
   /* USER CODE END 3 */
@@ -226,7 +228,23 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+PUTCHAR_PROTOTYPE
+{
+     /* Place your implementation of fputc here */
+      /* e.g. write a character to the USART1 and Loop until the end of transmission */
+      HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, 0xFFFF);
+      return ch;
+}
 
+GETCHAR_PROTOTYPE
+{
+     uint8_t ch = 0;
+     // Clear the Overrun flag just before receiving the first character
+     __HAL_UART_CLEAR_OREFLAG(&huart2);
+
+     HAL_UART_Receive(&huart2, (uint8_t *)&ch, 1, 5);
+     return ch;
+}
 /* USER CODE END 4 */
 
 /**
