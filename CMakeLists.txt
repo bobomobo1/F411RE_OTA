@@ -34,6 +34,20 @@ enable_language(C ASM)
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
 
+# Locate objcopy from ARM toolchain
+find_program(CMAKE_OBJCOPY arm-none-eabi-objcopy)
+if(NOT CMAKE_OBJCOPY)
+    message(FATAL_ERROR "arm-none-eabi-objcopy not found")
+endif()
+
+# Generate .bin after linking
+add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O binary
+            $<TARGET_FILE:${CMAKE_PROJECT_NAME}>
+            ${CMAKE_PROJECT_NAME}.bin
+    COMMENT "Generating ${CMAKE_PROJECT_NAME}.bin"
+)
+
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
