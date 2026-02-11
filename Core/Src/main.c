@@ -45,7 +45,8 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+uint8_t rx_byte;
+uint16_t count = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -104,9 +105,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-    printf("Hello, World!\r\n");
-    HAL_Delay(1000);
+    if(HAL_UART_Receive(&huart1, &rx_byte, 1, 100) == HAL_OK)
+    {
+        printf("Received: 0x%02X Count: %d\r\n", rx_byte, count);
+        count++;
+    }
   }
   /* USER CODE END 3 */
 }
@@ -280,6 +283,7 @@ GETCHAR_PROTOTYPE
      HAL_UART_Receive(&huart2, (uint8_t *)&ch, 1, 5);
      return ch;
 }
+
 /* USER CODE END 4 */
 
 /**
