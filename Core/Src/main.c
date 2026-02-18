@@ -45,8 +45,10 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-uint8_t rx_byte;
 uint16_t count = 0;
+uint8_t ack = 0x79;
+uint8_t rx_buff[128]; 
+volatile uint8_t rx_complete_flag = 0; 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -95,7 +97,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_UART_Receive_IT(&huart1, rx_buff, 128);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -105,10 +107,14 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    if(HAL_UART_Receive(&huart1, &rx_byte, 1, 100) == HAL_OK)
-    {
-        printf("Received: 0x%02X Count: %d\r\n", rx_byte, count);
-        count++;
+    if(rx_complete_flag){
+      printf("Recieved Full Chunk count:%d\r\n", count);
+
+      // Upload to flash memory
+
+      count++;
+      HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);
+      rx_complete_flag = 0;
     }
   }
   /* USER CODE END 3 */
@@ -284,6 +290,16 @@ GETCHAR_PROTOTYPE
      return ch;
 }
 
+// This is incomplete right now since we are only accounting for a full 128 byte chunk
+// What I could do is just send my packets full with 0x00 in spots that have no data
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if(huart->Instance == USART1) // Check which UART triggered the interrupt
+  {
+    HAL_UART_Receive_IT(&huart1, rx_buff, 128);
+    rx_complete_flag = 1; 
+  }
+}
 /* USER CODE END 4 */
 
 /**
