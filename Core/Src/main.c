@@ -57,6 +57,7 @@ rx_state_t rx_state = WAIT_START_1;
 uint16_t packet_number;
 uint8_t  data_len;
 uint32_t packet_CRC;
+uint32_t flash_pointer = FLASH_STAGING_START; // Used to keep track of where we are flashing
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -124,13 +125,16 @@ int main(void)
         rx_complete_flag = 0;
       }
       // Little endian here so we need to push the last bytes to the left cuz they are MSB 
-      uint16_t packetNumber = rx_buff[0] | (rx_buff[1] << 8);
-      uint8_t dataLen = rx_buff[2];
-      uint32_t packetCRC =  rx_buff[131] |
-                          (rx_buff[132] << 8) |
-                          (rx_buff[133] << 16) |
-                          (rx_buff[134] << 24);
-      printf("Packet #: %u, Packet Size: %u, CRC: %lu\r\n", packetNumber, dataLen, packetCRC);
+      packet_number = rx_buff[0] | (rx_buff[1] << 8);
+      data_len = rx_buff[2];
+      packet_CRC =  rx_buff[131] |
+                        (rx_buff[132] << 8) |
+                        (rx_buff[133] << 16) |
+                        (rx_buff[134] << 24);
+      printf("Packet #: %u, Packet Size: %u, CRC: %lu\r\n", packet_number, data_len, packet_CRC);
+      // Start flashing here
+      ota_flash_write(flash_pointer, &rx_buff[3], data_len);
+      flash_pointer+=data_len;
       // ACK
       HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);
       rx_complete_flag = 0;

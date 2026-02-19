@@ -2,6 +2,15 @@
     "configurations": [
         {
             "name": "STM32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:/Users/USER/Desktop/dev/F411RE_OTA/Drivers/STM32F4xx_HAL_Driver/Inc",
+                "C:/Users/USER/Desktop/dev/F411RE_OTA/Drivers/CMSIS/Include",
+                "C:/Users/USER/Desktop/dev/F411RE_OTA/Drivers/CMSIS/Device/ST/STM32F4xx/Include",
+                "C:/Users/USER/Desktop/dev/F411RE_OTA/Core/Inc",
+                "C:/Users/USER/Desktop/dev/F411RE_OTA/Inc",
+                "C:/path/to/ESP8266/SDK/include"
+            ],
             "compileCommands": "${workspaceFolder}/build/Debug/compile_commands.json",
             "intelliSenseMode": "windows-msvc-x64",
             "cStandard": "c17",
