@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include "esp_ota_flash.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,8 +48,15 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 uint16_t count = 0;
 uint8_t ack = 0x79;
-uint8_t rx_buff[128]; 
+uint8_t rx_buff[TX_CHUNK_SIZE]; 
 volatile uint8_t rx_complete_flag = 0; 
+uint8_t rx_byte;
+uint8_t rx_index = 0;
+typedef enum {WAIT_START_1, WAIT_START_2, RECEIVE_PACKET} rx_state_t; // State machine for rx_packets
+rx_state_t rx_state = WAIT_START_1;
+uint16_t packet_number;
+uint8_t  data_len;
+uint32_t packet_CRC;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -97,7 +105,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_UART_Receive_IT(&huart1, rx_buff, 128);
+  HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -107,15 +115,27 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    if(rx_complete_flag){
-      printf("Recieved Full Chunk count:%d\r\n", count);
-
-      // Upload to flash memory
-
-      count++;
+    if(rx_complete_flag)
+    {
+      // Check end delimiters
+      if(rx_buff[135] != TX_END_DELIM_1 || rx_buff[136] != TX_END_DELIM_2)
+      {
+        printf("Invalid end delimiter!\r\n");
+        rx_complete_flag = 0;
+      }
+      // Little endian here so we need to push the last bytes to the left cuz they are MSB 
+      uint16_t packetNumber = rx_buff[0] | (rx_buff[1] << 8);
+      uint8_t dataLen = rx_buff[2];
+      uint32_t packetCRC =  rx_buff[131] |
+                          (rx_buff[132] << 8) |
+                          (rx_buff[133] << 16) |
+                          (rx_buff[134] << 24);
+      printf("Packet #: %u, Packet Size: %u, CRC: %lu\r\n", packetNumber, dataLen, packetCRC);
+      // ACK
       HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);
       rx_complete_flag = 0;
     }
+
   }
   /* USER CODE END 3 */
 }
@@ -290,16 +310,39 @@ GETCHAR_PROTOTYPE
      return ch;
 }
 
-// This is incomplete right now since we are only accounting for a full 128 byte chunk
-// What I could do is just send my packets full with 0x00 in spots that have no data
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-  if(huart->Instance == USART1) // Check which UART triggered the interrupt
+  if(huart->Instance == USART1)
   {
-    HAL_UART_Receive_IT(&huart1, rx_buff, 128);
-    rx_complete_flag = 1; 
+    switch(rx_state)
+    {
+      case WAIT_START_1: // Waiting for first delim
+        if(rx_byte == TX_START_DELIM_1)
+            rx_state = WAIT_START_2;
+        break;
+      case WAIT_START_2: // Watiing for second delim
+        if(rx_byte == TX_START_DELIM_2)
+        {
+            rx_index = 0; // Start collecting packet
+            rx_state = RECEIVE_PACKET;
+        }
+        else
+            rx_state = WAIT_START_1; // Not a valid start
+        break;
+      case RECEIVE_PACKET: // Start getting data
+        rx_buff[rx_index++] = rx_byte;
+        if(rx_index >= TX_CHUNK_SIZE - 2) // Already consumed 2 start bytes
+        {
+            rx_complete_flag = 1; // Packet is ready
+            rx_state = WAIT_START_1; // Reset
+            rx_index = 0; // Reset buffer
+        }
+        break;
+    }
+    HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
   }
 }
+
 /* USER CODE END 4 */
 
 /**
