@@ -132,9 +132,17 @@ int main(void)
                         (rx_buff[133] << 16) |
                         (rx_buff[134] << 24);
       printf("Packet #: %u, Packet Size: %u, CRC: %lu\r\n", packet_number, data_len, packet_CRC);
+      if(packet_number == 0){
+        // Start off by erasing the sector
+        ota_flash_erase_staging();
+      }
       // Start flashing here
       ota_flash_write(flash_pointer, &rx_buff[3], data_len);
       flash_pointer+=data_len;
+      if(data_len < TX_DATA_SIZE){
+        // Then we are at final chunk
+        flash_pointer = FLASH_STAGING_START;
+      }
       // ACK
       HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);
       rx_complete_flag = 0;
