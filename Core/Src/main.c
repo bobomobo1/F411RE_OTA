@@ -139,13 +139,15 @@ int main(void)
       // Start flashing here
       ota_flash_write(flash_pointer, &rx_buff[3], data_len);
       flash_pointer+=data_len;
-      if(data_len < TX_DATA_SIZE){
-        // Then we are at final chunk
-        flash_pointer = FLASH_STAGING_START;
-      }
       // ACK
       HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);
       rx_complete_flag = 0;
+      if(data_len < TX_DATA_SIZE){
+        // Then we are at final chunk
+        flash_pointer = FLASH_STAGING_START;
+        //HAL_Delay(100);
+        //ota_flash_jump();
+      }
     }
 
   }
