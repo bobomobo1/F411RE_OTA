@@ -138,7 +138,10 @@ int main(void)
                         (rx_buff[134] << 24);
       // Check the CRC of the packet to see if it matches
       uint32_t crc = HAL_CRC_Calculate(&hcrc, (uint32_t*)&rx_buff[3], TX_DATA_SIZE/4);
-
+      if(crc != packet_CRC){
+        //Handle error
+        printf("CRC Mismatch!\r\n");
+      }
       printf("Packet #: %u, Packet Size: %u, Incoming CRC: %lu Local CRC: %lu\r\n", packet_number, data_len, packet_CRC, crc);
       if(packet_number == 0){
         // Start off by erasing the sector
