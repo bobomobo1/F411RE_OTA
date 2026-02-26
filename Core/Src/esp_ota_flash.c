@@ -3,6 +3,7 @@
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_flash.h"
 #include "stm32f4xx_hal_flash_ex.h"
+#include <stdio.h>
 
 // Erases entire staging section of memory(sector 4)
 void ota_flash_erase_staging(void){
@@ -11,24 +12,35 @@ void ota_flash_erase_staging(void){
     HAL_FLASH_Unlock();
     erase.TypeErase = FLASH_TYPEERASE_SECTORS;
     erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-    erase.Sector = 4;
+    erase.Sector = 5;
     erase.NbSectors = 1;
-    HAL_FLASHEx_Erase(&erase, &error); // May need to swtich to IT 
+    if(HAL_FLASHEx_Erase(&erase, &error)!=HAL_OK){ // May need to swtich to IT 
+        // Handle error
+        printf("Error Erasing flash\r\n");
+    }
     HAL_FLASH_Lock();
 }
 
 void ota_flash_write(uint32_t addr, uint8_t *data, uint16_t len){
     HAL_FLASH_Unlock();
-    // Flash each byte
-    for (uint8_t i = 0; i < 8; i++) { // 64 bytes / 8 bytes per double-word = 8 iterations
-        uint64_t value = 0;
-        // Combine 8 bytes into a uint64_t
-        for (uint8_t j = 0; j < 8; j++) {
-            value |= ((uint64_t)data[i*8 + j]) << (8*j);
+    // Calculate how many full words we have
+    uint16_t word_count = len / 4;
+    uint16_t remaining_bytes = len % 4;
+    uint32_t *word_data = (uint32_t*)data;
+    // Flash 4 bytes (32-bit word) at a time
+    for(uint16_t i = 0; i < word_count; i++){
+        HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr + i*4, word_data[i]);
+    }
+    // Flash remaining bytes if len is not multiple of 4
+    if(remaining_bytes){
+        uint32_t last_word = 0xFFFFFFFF; // Fill remaining with 0xFF
+        for(uint16_t i=0; i<remaining_bytes; i++){
+            ((uint8_t*)&last_word)[i] = data[word_count*4 + i];
         }
-        // Program 8 bytes at a time
-        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr + i*8, value) != HAL_OK) {
-            // Handle error
+        if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr + word_count*4, last_word)!=HAL_OK){
+            // Handle errror
+            printf("ERROR FLASHING\r\n");
+            return;
         }
     }
     HAL_FLASH_Lock();
@@ -37,7 +49,7 @@ void ota_flash_write(uint32_t addr, uint8_t *data, uint16_t len){
 // NOT WORKING AS OF NOW
 void ota_flash_jump(void){
     uint32_t sp = *(volatile uint32_t*)FLASH_STAGING_START;
-    uint32_t reset = *(volatile uint32_t*)FLASH_STAGING_START+4;
+    uint32_t reset = *(volatile uint32_t*)(FLASH_STAGING_START+4);
     void (*app)(void) = (void(*)(void))reset;
     __disable_irq();
     HAL_DeInit();

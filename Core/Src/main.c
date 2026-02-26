@@ -142,18 +142,17 @@ int main(void)
       printf("Packet #: %u, Packet Size: %u, Incoming CRC: %lu Local CRC: %lu\r\n", packet_number, data_len, packet_CRC, crc);
       if(packet_number == 0){
         // Start off by erasing the sector
-        //ota_flash_erase_staging();
+        ota_flash_erase_staging();
       }
       // Start flashing here
-      //ota_flash_write(flash_pointer, &rx_buff[3], data_len);
-      //flash_pointer+=data_len;
+      ota_flash_write(flash_pointer, &rx_buff[3], data_len);
+      flash_pointer+=data_len;
       // ACK
       HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);
       rx_complete_flag = 0;
       if(data_len < TX_DATA_SIZE){
         // Then we are at final chunk
         flash_pointer = FLASH_STAGING_START;
-        //HAL_Delay(100);
         //ota_flash_jump();
       }
     }
