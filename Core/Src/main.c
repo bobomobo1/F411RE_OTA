@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include "esp_ota_flash.h"
+#include "stm32f4xx_hal_crc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,6 +43,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+CRC_HandleTypeDef hcrc;
+
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
@@ -65,6 +68,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_CRC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -105,6 +109,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_USART1_UART_Init();
+  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
   HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
   /* USER CODE END 2 */
@@ -131,14 +136,17 @@ int main(void)
                         (rx_buff[132] << 8) |
                         (rx_buff[133] << 16) |
                         (rx_buff[134] << 24);
-      printf("Packet #: %u, Packet Size: %u, CRC: %lu\r\n", packet_number, data_len, packet_CRC);
+      // Check the CRC of the packet to see if it matches
+      uint32_t crc = HAL_CRC_Calculate(&hcrc, (uint32_t*)&rx_buff[3], TX_DATA_SIZE/4);
+
+      printf("Packet #: %u, Packet Size: %u, Incoming CRC: %lu Local CRC: %lu\r\n", packet_number, data_len, packet_CRC, crc);
       if(packet_number == 0){
         // Start off by erasing the sector
-        ota_flash_erase_staging();
+        //ota_flash_erase_staging();
       }
       // Start flashing here
-      ota_flash_write(flash_pointer, &rx_buff[3], data_len);
-      flash_pointer+=data_len;
+      //ota_flash_write(flash_pointer, &rx_buff[3], data_len);
+      //flash_pointer+=data_len;
       // ACK
       HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);
       rx_complete_flag = 0;
@@ -198,6 +206,32 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief CRC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_CRC_Init(void)
+{
+
+  /* USER CODE BEGIN CRC_Init 0 */
+
+  /* USER CODE END CRC_Init 0 */
+
+  /* USER CODE BEGIN CRC_Init 1 */
+
+  /* USER CODE END CRC_Init 1 */
+  hcrc.Instance = CRC;
+  if (HAL_CRC_Init(&hcrc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN CRC_Init 2 */
+
+  /* USER CODE END CRC_Init 2 */
+
 }
 
 /**
