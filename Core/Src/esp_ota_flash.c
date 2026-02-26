@@ -5,18 +5,20 @@
 #include "stm32f4xx_hal_flash_ex.h"
 #include <stdio.h>
 
-// Erases entire staging section of memory(sector 4)
+// Erases entire staging section of memory
 void ota_flash_erase_staging(void){
     FLASH_EraseInitTypeDef erase;
     uint32_t error;
     HAL_FLASH_Unlock();
     erase.TypeErase = FLASH_TYPEERASE_SECTORS;
     erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-    erase.Sector = 5;
+    erase.Sector = FLASH_SECTOR;
     erase.NbSectors = 1;
     if(HAL_FLASHEx_Erase(&erase, &error)!=HAL_OK){ // May need to swtich to IT 
         // Handle error
         printf("Error Erasing flash\r\n");
+        HAL_FLASH_Lock();
+        return;
     }
     HAL_FLASH_Lock();
 }
@@ -46,16 +48,21 @@ void ota_flash_write(uint32_t addr, uint8_t *data, uint16_t len){
     HAL_FLASH_Lock();
 }
 
-// NOT WORKING AS OF NOW
 void ota_flash_jump(void){
-    uint32_t sp = *(volatile uint32_t*)FLASH_STAGING_START;
-    uint32_t reset = *(volatile uint32_t*)(FLASH_STAGING_START+4);
-    void (*app)(void) = (void(*)(void))reset;
-    __disable_irq();
-    HAL_DeInit();
-    HAL_RCC_DeInit();
+    uint32_t main_sp    = *((uint32_t*)FLASH_STAGING_START);
+    uint32_t main_reset = *((uint32_t*)(FLASH_STAGING_START + 4));
+    // 1. Validate stack pointer
+    if(main_sp < 0x20000000 || main_sp > 0x20020000){
+        printf("Invalid stack pointer\r\n");
+        return;
+    }
+    // 2. Set vector table
     SCB->VTOR = FLASH_STAGING_START;
-    __set_MSP(sp);
-    __enable_irq();
-    app();
+    // 3. Set main stack pointer
+    __set_MSP(main_sp);
+    // 4. Jump to reset handler 
+    typedef void (*pFunction)(void);
+    pFunction app_reset = (pFunction)main_reset;
+    __enable_irq();           
+    app_reset();             
 }

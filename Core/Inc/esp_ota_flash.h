@@ -15,7 +15,8 @@
 #define TX_CHUNK_SIZE         TX_DELIMITER_SIZE + TX_HEADER_SIZE + TX_DATA_SIZE + TX_CRC_SIZE + TX_DELIMITER_SIZE
 
 // Flash defs
-#define FLASH_STAGING_START   0x08020000 // Start of sector 4
+#define FLASH_STAGING_START   0x08010000 // Start of sector 4
+#define FLASH_SECTOR          4
 
 
 void ota_flash_erase_staging(void);

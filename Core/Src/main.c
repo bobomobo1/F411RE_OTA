@@ -116,6 +116,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  ota_flash_jump();
   while (1)
   {
     /* USER CODE END WHILE */
@@ -153,7 +154,7 @@ int main(void)
       if(data_len < TX_DATA_SIZE){
         // Then we are at final chunk
         flash_pointer = FLASH_STAGING_START;
-        //ota_flash_jump();
+        ota_flash_jump();
       }
     }
 
