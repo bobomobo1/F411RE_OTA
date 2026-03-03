@@ -157,6 +157,7 @@ int main(void)
         // Then we are at final chunk
         flash_pointer = FLASH_STAGING_START;
         ota_flash_jump();
+        
       }
     }
 
