@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include "esp_ota_flash.h"
 #include "stm32f4xx_hal_crc.h"
+#include "watchdog.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -110,6 +111,8 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART1_UART_Init();
   MX_CRC_Init();
+
+  Watchdog_Init(); // Initialize watchdog
   /* USER CODE BEGIN 2 */
   HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
   /* USER CODE END 2 */
@@ -121,6 +124,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    watchdog_Refresh();
     if(rx_complete_flag)
     {
       // Check end delimiters
@@ -146,9 +150,11 @@ int main(void)
       if(packet_number == 0){
         // Start off by erasing the sector
         ota_flash_erase_staging();
+        Watchdog_Refresh();
       }
       // Start flashing here
       ota_flash_write(flash_pointer, &rx_buff[3], data_len);
+      Watchdog_Refresh();
       flash_pointer+=data_len;
       // ACK
       HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);
