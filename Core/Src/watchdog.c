@@ -19,6 +19,10 @@ IWDG_HandleTypeDef hiwdg;
   LSI ≈ 32kHz
   Timeout = (Reload + 1) / (LSI / Prescaler)
 
+   for this configuration -
+       Prescaler = 64 
+      Reload = 2000
+
   (2000+1)/(32000/64) ≈ 2 seconds
   */
   hiwdg.Init.Reload = 2000; // Adjust timeout (reload / LSI freq)
