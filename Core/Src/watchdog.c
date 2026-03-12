@@ -34,7 +34,7 @@ IWDG_HandleTypeDef hiwdg;
   }
 
 /* Feed / refresh watchdog */
-void Watchdog_refresh(void)
+void watchdog_refresh(void)
 {
     HAL_IWDG_Refresh(&hiwdg);
 
