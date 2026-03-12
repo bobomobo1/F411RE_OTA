@@ -89,7 +89,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -116,6 +115,12 @@ int main(void)
   MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
   HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
+
+  // Check if we reset because of a watchdog timer
+  if(__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)){
+    // Handle it
+    printf("Our Firmware Failed\r\n");
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -125,6 +130,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    HAL_IWDG_Refresh(&hiwdg);
     if(rx_complete_flag)
     {
       HAL_IWDG_Refresh(&hiwdg);
