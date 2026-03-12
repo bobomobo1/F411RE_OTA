@@ -4,9 +4,9 @@
 #include "stm32f4xx_hal.h"
 
 /* Initialize Independent Watchdog */
-void Watchdog_Init(void);
+void watchdog_init(void);
 
 /* Refresh watchdog counter */
-void Watchdog_Refresh(void);
+void watchdog_refresh(void);
 
 #endif

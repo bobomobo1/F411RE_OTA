@@ -112,7 +112,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_CRC_Init();
 
-  Watchdog_Init(); // Initialize watchdog
+  watchdog_init(); // Initialize watchdog
   /* USER CODE BEGIN 2 */
   HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
   /* USER CODE END 2 */
@@ -124,9 +124,10 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    watchdog_Refresh();
+  
     if(rx_complete_flag)
     {
+      watchdog_refresh(); // Kick watchdog regularly during OTA
       // Check end delimiters
       if(rx_buff[135] != TX_END_DELIM_1 || rx_buff[136] != TX_END_DELIM_2)
       {
@@ -150,11 +151,11 @@ int main(void)
       if(packet_number == 0){
         // Start off by erasing the sector
         ota_flash_erase_staging();
-        Watchdog_Refresh();
+        watchdog_refresh();
       }
       // Start flashing here
       ota_flash_write(flash_pointer, &rx_buff[3], data_len);
-      Watchdog_Refresh();
+      watchdog_refresh();
       flash_pointer+=data_len;
       // ACK
       HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);

@@ -8,29 +8,30 @@ IWDG_HandleTypeDef hiwdg;
 * Initialize Independent Watchdog
 * Timeout ≈ 2 seconds
   */
-  void Watchdog_Init(void)
+  void watchdog_init(void)
   {
   hiwdg.Instance = IWDG;
 
   /* Prescaler divides LSI clock */
-  hiwdg.Init.Prescaler = IWDG_PRESCALER_64;
+  hiwdg.Init.Prescaler = IWDG_PRESCALER_64; // adjust prescaler
 
   /*
   LSI ≈ 32kHz
   Timeout = (Reload + 1) / (LSI / Prescaler)
 
-  (1000+1)/(32000/64) ≈ 2 seconds
+  (2000+1)/(32000/64) ≈ 2 seconds
   */
-  hiwdg.Init.Reload = 1000;
+  hiwdg.Init.Reload = 2000; // Adjust timeout (reload / LSI freq)
 
   if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
   {
-  while(1);  // Initialization error
+    Error_Handler();
   }
   }
 
 /* Feed / refresh watchdog */
-void Watchdog_Refresh(void)
+void Watchdog_refresh(void)
 {
-HAL_IWDG_Refresh(&hiwdg);
+    HAL_IWDG_Refresh(&hiwdg);
+
 }
