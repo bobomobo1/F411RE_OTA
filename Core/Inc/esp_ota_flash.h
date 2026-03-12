@@ -15,12 +15,16 @@
 #define TX_CHUNK_SIZE         TX_DELIMITER_SIZE + TX_HEADER_SIZE + TX_DATA_SIZE + TX_CRC_SIZE + TX_DELIMITER_SIZE
 
 // Flash defs
-#define FLASH_STAGING_START   0x08010000 // Start of sector 4
-#define FLASH_SECTOR          4
+#define FLASH_STAGING_START   0x08020000 // Start of sector 5
+#define FLASH_STAGING_SECTOR  5
+
+#define FLASH_MAIN_START      0x08010000 // Start of sector 4
+#define FLASH_MAIN_SECTOR     4
 
 
-void ota_flash_erase_staging(void);
+void ota_flash_erase_staging(uint8_t eraseSector);
 void ota_flash_write(uint32_t addr, uint8_t *data, uint16_t len);
 void ota_flash_jump(void);
+void ota_move_to_main(void);
 
 #endif // __ESP_OTA_FLASH_H__

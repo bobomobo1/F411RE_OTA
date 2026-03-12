@@ -6,13 +6,13 @@
 #include <stdio.h>
 
 // Erases entire staging section of memory
-void ota_flash_erase_staging(void){
+void ota_flash_erase_staging(uint8_t eraseSector){
     FLASH_EraseInitTypeDef erase;
     uint32_t error;
     HAL_FLASH_Unlock();
     erase.TypeErase = FLASH_TYPEERASE_SECTORS;
     erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-    erase.Sector = FLASH_SECTOR;
+    erase.Sector = eraseSector;
     erase.NbSectors = 1;
     if(HAL_FLASHEx_Erase(&erase, &error)!=HAL_OK){ // May need to swtich to IT 
         // Handle error
@@ -49,7 +49,7 @@ void ota_flash_write(uint32_t addr, uint8_t *data, uint16_t len){
 }
 
 void ota_flash_jump(void){
-    uint32_t main_sp    = *((uint32_t*)FLASH_STAGING_START);
+    uint32_t main_sp = *((uint32_t*)FLASH_STAGING_START);
     uint32_t main_reset = *((uint32_t*)(FLASH_STAGING_START + 4));
     // 1. Validate stack pointer
     if(main_sp < 0x20000000 || main_sp > 0x20020000){

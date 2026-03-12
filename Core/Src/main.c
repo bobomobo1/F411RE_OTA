@@ -145,7 +145,7 @@ int main(void)
       printf("Packet #: %u, Packet Size: %u, Incoming CRC: %lu Local CRC: %lu\r\n", packet_number, data_len, packet_CRC, crc);
       if(packet_number == 0){
         // Start off by erasing the sector
-        ota_flash_erase_staging();
+        ota_flash_erase_staging(FLASH_STAGING_SECTOR);
       }
       // Start flashing here
       ota_flash_write(flash_pointer, &rx_buff[3], data_len);
