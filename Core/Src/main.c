@@ -163,6 +163,7 @@ int main(void)
       if(data_len < TX_DATA_SIZE){
         // Then we are at final chunk
         flash_pointer = FLASH_STAGING_START;
+        watchdog_refresh(); // final refresh before jump
         ota_flash_jump();
         
       }
