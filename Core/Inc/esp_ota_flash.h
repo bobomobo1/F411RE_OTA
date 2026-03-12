@@ -15,8 +15,8 @@
 #define TX_CHUNK_SIZE         TX_DELIMITER_SIZE + TX_HEADER_SIZE + TX_DATA_SIZE + TX_CRC_SIZE + TX_DELIMITER_SIZE
 
 // Flash defs
-#define FLASH_STAGING_START   0x08020000 // Start of sector 5
-#define FLASH_STAGING_SECTOR  5
+#define FLASH_STAGING_START   0x08040000 // Start of sector 6
+#define FLASH_STAGING_SECTOR  6
 
 #define FLASH_MAIN_START      0x08010000 // Start of sector 4
 #define FLASH_MAIN_SECTOR     4
