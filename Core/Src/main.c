@@ -52,7 +52,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint16_t count = 0;
-uint8_t ack = 0x79;
+const uint8_t ack = 0x79;
 uint8_t rx_buff[TX_CHUNK_SIZE]; 
 volatile uint8_t rx_complete_flag = 0; 
 uint8_t rx_byte;
@@ -63,6 +63,7 @@ uint16_t packet_number;
 uint8_t  data_len;
 uint32_t packet_CRC;
 uint32_t flash_pointer = FLASH_STAGING_START; // Used to keep track of where we are flashing
+const uint32_t pending_flag = 0xBBBBBBBB;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -120,7 +121,13 @@ int main(void)
   if(__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)){
     // Handle it
     printf("Our Firmware Failed\r\n");
+    __HAL_RCC_CLEAR_RESET_FLAGS();
   }
+  // Check flag (just for testing right now)
+  uint32_t flag = *(uint32_t*)FLASH_FLAG_START; 
+  printf("Flag: %X\r\n", flag);
+  // If our flag is valid here we should then move our staging app to main.  
+  
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -170,6 +177,9 @@ int main(void)
         // Then we are at final chunk
         flash_pointer = FLASH_STAGING_START;
         HAL_IWDG_Refresh(&hiwdg);
+        // Set validity flag to 'pending'
+        ota_flash_erase_staging(FLASH_FLAG_SECTOR);
+        ota_flash_write(FLASH_FLAG_START, (uint8_t*)&pending_flag, sizeof(pending_flag));
         ota_flash_jump();
       }
     }

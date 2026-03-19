@@ -21,6 +21,8 @@
 #define FLASH_MAIN_START      0x08010000 // Start of sector 4
 #define FLASH_MAIN_SECTOR     4
 
+#define FLASH_FLAG_START	  0x0800C000 // Start of sector 3
+#define FLASH_FLAG_SECTOR	  3
 
 void ota_flash_erase_staging(uint8_t eraseSector);
 void ota_flash_write(uint32_t addr, uint8_t *data, uint16_t len);
