@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 // Erases entire staging section of memory
-void ota_flash_erase_staging(uint8_t eraseSector){
+void ota_flash_erase_sector(uint8_t eraseSector){
     FLASH_EraseInitTypeDef erase;
     uint32_t error;
     HAL_FLASH_Unlock();
@@ -72,7 +72,7 @@ void ota_move_to_main(uint16_t packet_number){
     uint32_t total_packets = packet_number + 1;
     uint32_t firmware_size = total_packets * TX_DATA_SIZE;
     printf("Moving firmware: %lu bytes\r\n", firmware_size);
-    ota_flash_erase_staging(FLASH_MAIN_SECTOR);
+    ota_flash_erase_sector(FLASH_MAIN_SECTOR);
     // Copy staging to main
     uint32_t src_addr = FLASH_STAGING_START;
     uint32_t dst_addr = FLASH_MAIN_START;

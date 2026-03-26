@@ -169,7 +169,7 @@ int main(void)
       printf("Packet #: %u, Packet Size: %u, Incoming CRC: %lu Local CRC: %lu\r\n", packet_number, data_len, packet_CRC, crc);
       if(packet_number == 0){
         // Start off by erasing the sector
-        ota_flash_erase_staging(FLASH_STAGING_SECTOR);
+        ota_flash_erase_sector(FLASH_STAGING_SECTOR);
         HAL_IWDG_Refresh(&hiwdg);
       }
       // Start flashing here
@@ -184,7 +184,7 @@ int main(void)
         flash_pointer = FLASH_STAGING_START;
         HAL_IWDG_Refresh(&hiwdg);
         // Set validity flag to 'pending'
-        ota_flash_erase_staging(FLASH_FLAG_SECTOR);
+        ota_flash_erase_sector(FLASH_FLAG_SECTOR);
         ota_flash_write(FLASH_FLAG_START, (uint8_t*)&pending_flag, sizeof(pending_flag));
         ota_flash_write(FLASH_SIZE_START, (uint8_t*)&packet_number, sizeof(packet_number)); // Put packet number into flash to use later
         ota_flash_jump(FLASH_STAGING_START);
