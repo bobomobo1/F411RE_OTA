@@ -64,6 +64,7 @@ uint8_t  data_len;
 uint32_t packet_CRC;
 uint32_t flash_pointer = FLASH_STAGING_START; // Used to keep track of where we are flashing
 const uint32_t pending_flag = 0xBBBBBBBB;
+const uint32_t valid_flag = 0xAAAAAAAA;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -128,7 +129,7 @@ int main(void)
   printf("Flag: %X\r\n", flag);
   uint16_t flash_packet_number = *(uint16_t*)FLASH_SIZE_START;
   printf("Number of packets: %d\r\n", flash_packet_number);
-  if (flag == 0xAAAAAAAA){ // 'Valid'
+  if (flag == valid_flag){ // 'Valid'
     ota_move_to_main(flash_packet_number);
     ota_flash_jump(FLASH_MAIN_START);
   }
