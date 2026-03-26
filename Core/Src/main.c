@@ -65,6 +65,7 @@ uint32_t packet_CRC;
 uint32_t flash_pointer = FLASH_STAGING_START; // Used to keep track of where we are flashing
 const uint32_t pending_flag = 0xBBBBBBBB;
 const uint32_t valid_flag = 0xAAAAAAAA;
+const uint32_t done_flag = 0xCCCCCCCC;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -123,6 +124,8 @@ int main(void)
     // Handle it
     printf("Our Firmware Failed\r\n");
     __HAL_RCC_CLEAR_RESET_FLAGS();
+    ota_flash_erase_sector(FLASH_STAGING_SECTOR); // Firmware is bad so erase
+    ota_flash_erase_sector(FLASH_FLAG_SECTOR); // Reset flags  
   }
   // Check flag (just for testing right now)
   uint32_t flag = *(uint32_t*)FLASH_FLAG_START; 
@@ -131,6 +134,11 @@ int main(void)
   printf("Number of packets: %d\r\n", flash_packet_number);
   if (flag == valid_flag){ // 'Valid'
     ota_move_to_main(flash_packet_number);
+    ota_flash_erase_sector(FLASH_FLAG_SECTOR); // Reset flags  
+    ota_flash_erase_sector(FLASH_STAGING_SECTOR); // Firmware is bad so erase
+    ota_flash_write(FLASH_FLAG_START, (uint8_t*)&done_flag, sizeof(done_flag));
+    ota_flash_jump(FLASH_MAIN_START);
+  } else if (flag == done_flag){ // Finished so we should just be jumping into main
     ota_flash_jump(FLASH_MAIN_START);
   }
   
