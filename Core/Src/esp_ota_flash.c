@@ -48,16 +48,16 @@ void ota_flash_write(uint32_t addr, uint8_t *data, uint16_t len){
     HAL_FLASH_Lock();
 }
 
-void ota_flash_jump(void){
-    uint32_t main_sp = *((uint32_t*)FLASH_STAGING_START);
-    uint32_t main_reset = *((uint32_t*)(FLASH_STAGING_START + 4));
+void ota_flash_jump(uint32_t jump_address){
+    uint32_t main_sp = *((uint32_t*)jump_address);
+    uint32_t main_reset = *((uint32_t*)(jump_address + 4));
     // 1. Validate stack pointer
     if(main_sp < 0x20000000 || main_sp > 0x20020000){
         printf("Invalid stack pointer\r\n");
         return;
     }
     // 2. Set vector table
-    SCB->VTOR = FLASH_STAGING_START;
+    SCB->VTOR = jump_address;
     // 3. Set main stack pointer
     __set_MSP(main_sp);
     // 4. Jump to reset handler 
@@ -65,4 +65,37 @@ void ota_flash_jump(void){
     pFunction app_reset = (pFunction)main_reset;
     __enable_irq();           
     app_reset();             
+}
+
+void ota_move_to_main(uint16_t packet_number){
+    // Get firmware size
+    uint32_t total_packets = packet_number + 1;
+    uint32_t firmware_size = total_packets * TX_DATA_SIZE;
+    printf("Moving firmware: %lu bytes\r\n", firmware_size);
+    ota_flash_erase_staging(FLASH_MAIN_SECTOR);
+    // Copy staging to main
+    uint32_t src_addr = FLASH_STAGING_START;
+    uint32_t dst_addr = FLASH_MAIN_START;
+    uint32_t remaining = firmware_size;
+    while(remaining > 0){
+        uint16_t chunk_size;
+        if(remaining >= TX_DATA_SIZE){
+            chunk_size = TX_DATA_SIZE;
+        } else {
+            chunk_size = remaining;
+        }
+        ota_flash_write(dst_addr, (uint8_t*)src_addr, chunk_size);
+        src_addr += chunk_size;
+        dst_addr += chunk_size;
+        remaining -= chunk_size;
+    }
+    // Verify our code is the same from staging 
+    uint8_t *src = (uint8_t*)FLASH_STAGING_START;
+    uint8_t *dst = (uint8_t*)FLASH_MAIN_START;
+    for(uint32_t i = 0; i < firmware_size; i++){
+        if(src[i] != dst[i]){
+            printf("Verification failed at byte %lu\r\n", i);
+            return;
+        }
+    }
 }

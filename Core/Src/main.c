@@ -126,7 +126,12 @@ int main(void)
   // Check flag (just for testing right now)
   uint32_t flag = *(uint32_t*)FLASH_FLAG_START; 
   printf("Flag: %X\r\n", flag);
-  // If our flag is valid here we should then move our staging app to main.  
+  uint16_t flash_packet_number = *(uint16_t*)FLASH_SIZE_START;
+  printf("Number of packets: %d\r\n", flash_packet_number);
+  if (flag == 0xAAAAAAAA){ // 'Valid'
+    ota_move_to_main(flash_packet_number);
+    ota_flash_jump(FLASH_MAIN_START);
+  }
   
   /* USER CODE END 2 */
 
@@ -180,7 +185,8 @@ int main(void)
         // Set validity flag to 'pending'
         ota_flash_erase_staging(FLASH_FLAG_SECTOR);
         ota_flash_write(FLASH_FLAG_START, (uint8_t*)&pending_flag, sizeof(pending_flag));
-        ota_flash_jump();
+        ota_flash_write(FLASH_SIZE_START, (uint8_t*)&packet_number, sizeof(packet_number)); // Put packet number into flash to use later
+        ota_flash_jump(FLASH_STAGING_START);
       }
     }
 

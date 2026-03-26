@@ -24,9 +24,11 @@
 #define FLASH_FLAG_START	  0x0800C000 // Start of sector 3
 #define FLASH_FLAG_SECTOR	  3
 
+#define FLASH_SIZE_START      (FLASH_FLAG_START + (sizeof(uint32_t))) // Starts after our packet count flag 
+
 void ota_flash_erase_staging(uint8_t eraseSector);
 void ota_flash_write(uint32_t addr, uint8_t *data, uint16_t len);
-void ota_flash_jump(void);
-void ota_move_to_main(void);
+void ota_flash_jump(uint32_t jump_address);
+void ota_move_to_main(uint16_t packet_number);
 
 #endif // __ESP_OTA_FLASH_H__
