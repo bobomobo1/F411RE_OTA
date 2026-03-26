@@ -135,7 +135,6 @@ int main(void)
   if (flag == valid_flag){ // 'Valid'
     ota_move_to_main(flash_packet_number);
     ota_flash_erase_sector(FLASH_FLAG_SECTOR); // Reset flags  
-    ota_flash_erase_sector(FLASH_STAGING_SECTOR); // Firmware is bad so erase
     ota_flash_write(FLASH_FLAG_START, (uint8_t*)&done_flag, sizeof(done_flag));
     ota_flash_jump(FLASH_MAIN_START);
   } else if (flag == done_flag){ // Finished so we should just be jumping into main
