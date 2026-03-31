@@ -52,6 +52,7 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 uint16_t count = 0;
 uint8_t ack = 0x79;
+uint8_t nack = 0x1F; 
 uint8_t rx_buff[TX_CHUNK_SIZE]; 
 volatile uint8_t rx_complete_flag = 0; 
 uint8_t rx_byte;
@@ -62,6 +63,10 @@ uint16_t packet_number;
 uint8_t  data_len;
 uint32_t packet_CRC;
 uint32_t flash_pointer = FLASH_STAGING_START; // Used to keep track of where we are flashing
+
+/// For handling duplicate packets
+static uint16_t last_packet_number = 0xFFFF;
+static uint8_t last_packet_crc_good_count = 0; // count of successful CRCs for the same packet
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -117,6 +122,11 @@ int main(void)
   HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
   /* USER CODE END 2 */
 
+  if(__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST))
+  {
+    // reset happened because IWDG expired
+  }
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -124,7 +134,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  
+
+     watchdog_refresh(); // instead of checking through if - it refresh from the beginning 
     if(rx_complete_flag)
     {
       watchdog_refresh(); // Kick watchdog regularly during OTA
@@ -133,6 +144,7 @@ int main(void)
       {
         printf("Invalid end delimiter!\r\n");
         rx_complete_flag = 0;
+        continue;
       }
       // Little endian here so we need to push the last bytes to the left cuz they are MSB 
       packet_number = rx_buff[0] | (rx_buff[1] << 8);
@@ -144,18 +156,41 @@ int main(void)
       // Check the CRC of the packet to see if it matches
       uint32_t crc = HAL_CRC_Calculate(&hcrc, (uint32_t*)&rx_buff[3], TX_DATA_SIZE/4);
       if(crc != packet_CRC){
-        //Handle error
-        printf("CRC Mismatch!\r\n");
+        printf("CRC Mismatch for packet %u!\r\n", packet_number);
+        last_packet_crc_good_count = 0; //reset counter
+        rx_complete_flag = 0;
+        HAL_UART_Transmit(&huart1, &nack, 1, HAL_MAX_DELAY); // NACK
+        continue; // skip processingg this packet
       }
-      printf("Packet #: %u, Packet Size: %u, Incoming CRC: %lu Local CRC: %lu\r\n", packet_number, data_len, packet_CRC, crc);
-      if(packet_number == 0){
-        // Start off by erasing the sector
-        ota_flash_erase_staging();
-        watchdog_refresh();
+      // if packet is the same as lat one
+      if(packet_number == last_packet_number)
+      {
+        if(last_packet_crc_good_count < 3)
+        {
+          last_packet_crc_good_count++;
+        }
+      }
+      else
+      {
+        // new packet
+        last_packet_number = packet_number;
+        last_packet_crc_good_count = 1; // reset counter for new packet
+      }
+
+      printf("Packet #: %u, Packet Size: %u, CRC OK, count: %d\r\n", packet_number, data_len, last_packet_crc_good_count); 
+      // only write to flash once per the packet
+      if(last_packet_crc_good_count == 1)
+      {
+        if(packet_number == 0)
+        {
+          ota_flash_erase_staging();
+          watchdog_refresh();
+
+        }
       }
       // Start flashing here
       ota_flash_write(flash_pointer, &rx_buff[3], data_len);
-      watchdog_refresh();
+      //watchdog_refresh();
       flash_pointer+=data_len;
       // ACK
       HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);

@@ -23,9 +23,9 @@ IWDG_HandleTypeDef hiwdg;
        Prescaler = 64 
       Reload = 2000
 
-  (2000+1)/(32000/64) ≈ 2 seconds
+  (2000+1)/(32000/64) ≈ 4 seconds
   */
-  hiwdg.Init.Reload = 2000; // Adjust timeout (reload / LSI freq)
+  hiwdg.Init.Reload = 2000; 
 
   if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
   {
@@ -37,5 +37,4 @@ IWDG_HandleTypeDef hiwdg;
 void watchdog_refresh(void)
 {
     HAL_IWDG_Refresh(&hiwdg);
-
 }
