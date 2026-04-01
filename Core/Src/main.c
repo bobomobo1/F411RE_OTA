@@ -140,7 +140,7 @@ int main(void)
   } else if (flag == done_flag){ // Finished so we should just be jumping into main
     ota_flash_jump(FLASH_MAIN_START);
   }
-  
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -155,7 +155,7 @@ int main(void)
     {
       HAL_IWDG_Refresh(&hiwdg);
       // Check end delimiters
-      if(rx_buff[135] != TX_END_DELIM_1 || rx_buff[136] != TX_END_DELIM_2)
+      if(rx_buff[TX_END_DELIM_1_INDEX] != TX_END_DELIM_1 || rx_buff[TX_END_DELIM_2_INDEX] != TX_END_DELIM_2)
       {
         printf("Invalid end delimiter!\r\n");
         rx_complete_flag = 0;
@@ -163,10 +163,10 @@ int main(void)
       // Little endian here so we need to push the last bytes to the left cuz they are MSB 
       packet_number = rx_buff[0] | (rx_buff[1] << 8);
       data_len = rx_buff[2];
-      packet_CRC =  rx_buff[131] |
-                        (rx_buff[132] << 8) |
-                        (rx_buff[133] << 16) |
-                        (rx_buff[134] << 24);
+      packet_CRC =  rx_buff[TX_START_CRC_INDEX] |
+                        (rx_buff[TX_START_CRC_INDEX+1] << 8) |
+                        (rx_buff[TX_START_CRC_INDEX+2] << 16) |
+                        (rx_buff[TX_START_CRC_INDEX+3] << 24);
       // Check the CRC of the packet to see if it matches
       uint32_t crc = HAL_CRC_Calculate(&hcrc, (uint32_t*)&rx_buff[3], TX_DATA_SIZE/4);
       if(crc != packet_CRC){
