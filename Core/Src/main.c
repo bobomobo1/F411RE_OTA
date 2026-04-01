@@ -60,7 +60,7 @@ uint8_t rx_index = 0;
 typedef enum {WAIT_START_1, WAIT_START_2, RECEIVE_PACKET} rx_state_t; // State machine for rx_packets
 rx_state_t rx_state = WAIT_START_1;
 uint16_t packet_number;
-uint8_t  data_len;
+uint8_t  total_packets;
 uint32_t packet_CRC;
 uint32_t flash_pointer = FLASH_STAGING_START; // Used to keep track of where we are flashing
 const uint32_t pending_flag = 0xBBBBBBBB;
@@ -162,7 +162,7 @@ int main(void)
       }
       // Little endian here so we need to push the last bytes to the left cuz they are MSB 
       packet_number = rx_buff[0] | (rx_buff[1] << 8);
-      data_len = rx_buff[2];
+      total_packets = rx_buff[2];
       packet_CRC =  rx_buff[TX_START_CRC_INDEX] |
                         (rx_buff[TX_START_CRC_INDEX+1] << 8) |
                         (rx_buff[TX_START_CRC_INDEX+2] << 16) |
@@ -173,20 +173,20 @@ int main(void)
         //Handle error
         printf("CRC Mismatch!\r\n");
       }
-      printf("Packet #: %u, Packet Size: %u, Incoming CRC: %lu Local CRC: %lu\r\n", packet_number, data_len, packet_CRC, crc);
+      printf("Packet #: %u, Total Packets: %u, Incoming CRC: %lu Local CRC: %lu\r\n", packet_number, total_packets, packet_CRC, crc);
       if(packet_number == 0){
         // Start off by erasing the sector
         ota_flash_erase_sector(FLASH_STAGING_SECTOR);
         HAL_IWDG_Refresh(&hiwdg);
       }
       // Start flashing here
-      ota_flash_write(flash_pointer, &rx_buff[3], data_len);
+      ota_flash_write(flash_pointer, &rx_buff[3], TX_DATA_SIZE);
       HAL_IWDG_Refresh(&hiwdg);
-      flash_pointer+=data_len;
+      flash_pointer+=TX_DATA_SIZE;
       // ACK
       HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);
       rx_complete_flag = 0;
-      if(data_len < TX_DATA_SIZE){
+      if(packet_number >= total_packets){
         // Then we are at final chunk
         flash_pointer = FLASH_STAGING_START;
         HAL_IWDG_Refresh(&hiwdg);
