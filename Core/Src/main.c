@@ -46,6 +46,8 @@
 /* Private variables ---------------------------------------------------------*/
 CRC_HandleTypeDef hcrc;
 
+IWDG_HandleTypeDef hiwdg;
+
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
@@ -60,13 +62,16 @@ uint8_t rx_index = 0;
 typedef enum {WAIT_START_1, WAIT_START_2, RECEIVE_PACKET} rx_state_t; // State machine for rx_packets
 rx_state_t rx_state = WAIT_START_1;
 uint16_t packet_number;
-uint8_t  data_len;
+uint8_t  total_packets;
 uint32_t packet_CRC;
 uint32_t flash_pointer = FLASH_STAGING_START; // Used to keep track of where we are flashing
 
 /// For handling duplicate packets
 static uint16_t last_packet_number = 0xFFFF;
 static uint8_t last_packet_crc_good_count = 0; // count of successful CRCs for the same packet
+const uint32_t pending_flag = 0xBBBBBBBB;
+const uint32_t valid_flag = 0xAAAAAAAA;
+const uint32_t done_flag = 0xCCCCCCCC;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -75,6 +80,7 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_CRC_Init(void);
+static void MX_IWDG_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -92,7 +98,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -116,10 +121,32 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART1_UART_Init();
   MX_CRC_Init();
-
-  watchdog_init(); // Initialize watchdog
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
   HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
+
+  // Check if we reset because of a watchdog timer
+  if(__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)){
+    // Handle it
+    printf("Our Firmware Failed\r\n");
+    __HAL_RCC_CLEAR_RESET_FLAGS();
+    ota_flash_erase_sector(FLASH_STAGING_SECTOR); // Firmware is bad so erase
+    ota_flash_erase_sector(FLASH_FLAG_SECTOR); // Reset flags  
+  }
+  // Check flag (just for testing right now)
+  uint32_t flag = *(uint32_t*)FLASH_FLAG_START; 
+  printf("Flag: %X\r\n", flag);
+  uint16_t flash_packet_number = *(uint16_t*)FLASH_SIZE_START;
+  printf("Number of packets: %d\r\n", flash_packet_number);
+  if (flag == valid_flag){ // 'Valid'
+    ota_move_to_main(flash_packet_number);
+    ota_flash_erase_sector(FLASH_FLAG_SECTOR); // Reset flags  
+    ota_flash_write(FLASH_FLAG_START, (uint8_t*)&done_flag, sizeof(done_flag));
+    ota_flash_jump(FLASH_MAIN_START);
+  } else if (flag == done_flag){ // Finished so we should just be jumping into main
+    ota_flash_jump(FLASH_MAIN_START);
+  }
+
   /* USER CODE END 2 */
 
   if(__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST))
@@ -134,13 +161,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-     watchdog_refresh(); // instead of checking through if - it refresh from the beginning 
+    HAL_IWDG_Refresh(&hiwdg);
     if(rx_complete_flag)
     {
-      watchdog_refresh(); // Kick watchdog regularly during OTA
+      HAL_IWDG_Refresh(&hiwdg);
       // Check end delimiters
-      if(rx_buff[135] != TX_END_DELIM_1 || rx_buff[136] != TX_END_DELIM_2)
+      if(rx_buff[TX_END_DELIM_1_INDEX] != TX_END_DELIM_1 || rx_buff[TX_END_DELIM_2_INDEX] != TX_END_DELIM_2)
       {
         printf("Invalid end delimiter!\r\n");
         rx_complete_flag = 0;
@@ -148,11 +174,11 @@ int main(void)
       }
       // Little endian here so we need to push the last bytes to the left cuz they are MSB 
       packet_number = rx_buff[0] | (rx_buff[1] << 8);
-      data_len = rx_buff[2];
-      packet_CRC =  rx_buff[131] |
-                        (rx_buff[132] << 8) |
-                        (rx_buff[133] << 16) |
-                        (rx_buff[134] << 24);
+      total_packets = rx_buff[2];
+      packet_CRC =  rx_buff[TX_START_CRC_INDEX] |
+                        (rx_buff[TX_START_CRC_INDEX+1] << 8) |
+                        (rx_buff[TX_START_CRC_INDEX+2] << 16) |
+                        (rx_buff[TX_START_CRC_INDEX+3] << 24);
       // Check the CRC of the packet to see if it matches
       uint32_t crc = HAL_CRC_Calculate(&hcrc, (uint32_t*)&rx_buff[3], TX_DATA_SIZE/4);
       if(crc != packet_CRC){
@@ -189,18 +215,21 @@ int main(void)
         }
       }
       // Start flashing here
-      ota_flash_write(flash_pointer, &rx_buff[3], data_len);
-      //watchdog_refresh();
-      flash_pointer+=data_len;
+      ota_flash_write(flash_pointer, &rx_buff[3], TX_DATA_SIZE);
+      HAL_IWDG_Refresh(&hiwdg);
+      flash_pointer+=TX_DATA_SIZE;
       // ACK
       HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);
       rx_complete_flag = 0;
-      if(data_len < TX_DATA_SIZE){
+      if(packet_number >= total_packets){
         // Then we are at final chunk
         flash_pointer = FLASH_STAGING_START;
-        watchdog_refresh(); // final refresh before jump
-        ota_flash_jump();
-        
+        HAL_IWDG_Refresh(&hiwdg);
+        // Set validity flag to 'pending'
+        ota_flash_erase_sector(FLASH_FLAG_SECTOR);
+        ota_flash_write(FLASH_FLAG_START, (uint8_t*)&pending_flag, sizeof(pending_flag));
+        ota_flash_write(FLASH_SIZE_START, (uint8_t*)&packet_number, sizeof(packet_number)); // Put packet number into flash to use later
+        ota_flash_jump(FLASH_STAGING_START);
       }
     }
 
@@ -225,9 +254,10 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 16;
@@ -277,6 +307,34 @@ static void MX_CRC_Init(void)
   /* USER CODE BEGIN CRC_Init 2 */
 
   /* USER CODE END CRC_Init 2 */
+
+}
+
+/**
+  * @brief IWDG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_IWDG_Init(void)
+{
+
+  /* USER CODE BEGIN IWDG_Init 0 */
+
+  /* USER CODE END IWDG_Init 0 */
+
+  /* USER CODE BEGIN IWDG_Init 1 */
+
+  /* USER CODE END IWDG_Init 1 */
+  hiwdg.Instance = IWDG;
+  hiwdg.Init.Prescaler = IWDG_PRESCALER_64;
+  hiwdg.Init.Reload = 2000;
+  if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN IWDG_Init 2 */
+
+  /* USER CODE END IWDG_Init 2 */
 
 }
 
