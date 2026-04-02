@@ -54,6 +54,8 @@ UART_HandleTypeDef huart2;
 uint16_t count = 0;
 const uint8_t ack = 0x79;
 const uint8_t ready_response = 0x78;
+const uint8_t nack = 0x1F; 
+const uint8_t stop_send_ack = 0x1E;
 uint8_t rx_buff[TX_CHUNK_SIZE]; 
 volatile uint8_t rx_complete_flag = 0; 
 uint8_t rx_byte;
@@ -68,6 +70,9 @@ const uint32_t pending_flag = 0xBBBBBBBB;
 const uint32_t valid_flag = 0xAAAAAAAA;
 const uint32_t done_flag = 0xCCCCCCCC;
 const uint32_t reset_flag = 0xDDDDDDDD;
+
+static uint8_t bad_packet_count = 0;
+static uint16_t last_packet_number = 0xFFFF;
 
 uint8_t ota_start_count = 0;
 /* USER CODE END PV */
@@ -177,7 +182,17 @@ int main(void)
       uint32_t crc = HAL_CRC_Calculate(&hcrc, (uint32_t*)&rx_buff[3], TX_DATA_SIZE/4);
       if(crc != packet_CRC){
         //Handle error
-        printf("CRC Mismatch!\r\n");
+        printf("CRC Mismatch for packet %u!\r\n", packet_number);
+        bad_packet_count++;
+        rx_complete_flag = 0;
+        if(bad_packet_count >= 3){ // We have had too many failed packet sends here 
+          HAL_UART_Transmit(&huart1, &stop_send_ack, 1, HAL_MAX_DELAY); // Stop send ack
+          bad_packet_count = 0;
+          flash_pointer = FLASH_STAGING_START;
+          continue; // Leave loop
+        }
+        HAL_UART_Transmit(&huart1, &nack, 1, HAL_MAX_DELAY); // NACK
+        continue;
       }
       printf("Packet #: %u, Total Packets: %u, Incoming CRC: %lu Local CRC: %lu\r\n", packet_number, total_packets, packet_CRC, crc);
       if(packet_number == 0){
