@@ -53,11 +53,12 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 uint16_t count = 0;
 const uint8_t ack = 0x79;
+const uint8_t ready_response = 0x78;
 uint8_t rx_buff[TX_CHUNK_SIZE]; 
 volatile uint8_t rx_complete_flag = 0; 
 uint8_t rx_byte;
 uint8_t rx_index = 0;
-typedef enum {WAIT_START_1, WAIT_START_2, RECEIVE_PACKET} rx_state_t; // State machine for rx_packets
+typedef enum {WAIT_START_1, WAIT_START_2, WAIT_OTA_SEQUENCE, RECEIVE_PACKET} rx_state_t; // State machine for rx_packets
 rx_state_t rx_state = WAIT_START_1;
 uint16_t packet_number;
 uint8_t  total_packets;
@@ -66,6 +67,9 @@ uint32_t flash_pointer = FLASH_STAGING_START; // Used to keep track of where we 
 const uint32_t pending_flag = 0xBBBBBBBB;
 const uint32_t valid_flag = 0xAAAAAAAA;
 const uint32_t done_flag = 0xCCCCCCCC;
+const uint32_t reset_flag = 0xDDDDDDDD;
+
+uint8_t ota_start_count = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -139,6 +143,8 @@ int main(void)
     ota_flash_jump(FLASH_MAIN_START);
   } else if (flag == done_flag){ // Finished so we should just be jumping into main
     ota_flash_jump(FLASH_MAIN_START);
+  } else if(flag == reset_flag){ // We just reset from main
+    HAL_UART_Transmit(&huart1, &ready_response, 1, HAL_MAX_DELAY);
   }
 
   /* USER CODE END 2 */
@@ -441,10 +447,24 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         if(rx_byte == TX_START_DELIM_2)
         {
             rx_index = 0; // Start collecting packet
-            rx_state = RECEIVE_PACKET;
+            rx_state = WAIT_OTA_SEQUENCE;
         }
         else
             rx_state = WAIT_START_1; // Not a valid start
+        break;
+      case WAIT_OTA_SEQUENCE:
+        if(rx_byte == TX_START_OTA_HEX) {
+          ota_start_count++;
+          if(ota_start_count >= 7) {
+            HAL_UART_Transmit(&huart1, &ready_response, 1, HAL_MAX_DELAY);
+            rx_state = WAIT_START_1; // Ready for real packets
+          }
+        } else {
+          // Not OTA start
+          rx_index = 0;
+          rx_buff[rx_index++] = rx_byte;
+          rx_state = RECEIVE_PACKET;
+        }
         break;
       case RECEIVE_PACKET: // Start getting data
         rx_buff[rx_index++] = rx_byte;

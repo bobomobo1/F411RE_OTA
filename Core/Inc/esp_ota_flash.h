@@ -31,6 +31,8 @@
 
 #define FLASH_SIZE_START      (FLASH_FLAG_START + (sizeof(uint32_t))) // Starts after our packet count flag 
 
+#define TX_START_OTA_HEX      0xFE
+
 void ota_flash_erase_sector(uint8_t eraseSector);
 void ota_flash_write(uint32_t addr, uint8_t *data, uint16_t len);
 void ota_flash_jump(uint32_t jump_address);

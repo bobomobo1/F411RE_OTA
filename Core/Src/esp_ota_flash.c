@@ -56,6 +56,12 @@ void ota_flash_jump(uint32_t jump_address){
         printf("Invalid stack pointer\r\n");
         return;
     }
+    /* TODO: Test if we need to disable interrupts before jump and if this is the proper way to do that
+    for(int i=WWDG_IRQn;i<FPU_IRQn;i++){
+        __NVIC_DisableIRQ(i);
+    }
+    __disable_irq();
+    */
     // 2. Set vector table
     SCB->VTOR = jump_address;
     // 3. Set main stack pointer
