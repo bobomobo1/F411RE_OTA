@@ -181,6 +181,7 @@ int main(void)
       // Check the CRC of the packet to see if it matches
       uint32_t crc = HAL_CRC_Calculate(&hcrc, (uint32_t*)&rx_buff[3], TX_DATA_SIZE/4);
       if(crc != packet_CRC){
+        last_packet_number = packet_number;
         //Handle error
         printf("CRC Mismatch for packet %u!\r\n", packet_number);
         bad_packet_count++;
@@ -193,6 +194,10 @@ int main(void)
         }
         HAL_UART_Transmit(&huart1, &nack, 1, HAL_MAX_DELAY); // NACK
         continue;
+      }
+      if(last_packet_number == packet_number){
+        // If we are sending the last packet and we make it past the CRC check reset bad_packet_count
+        bad_packet_count = 0;
       }
       printf("Packet #: %u, Total Packets: %u, Incoming CRC: %lu Local CRC: %lu\r\n", packet_number, total_packets, packet_CRC, crc);
       if(packet_number == 0){
