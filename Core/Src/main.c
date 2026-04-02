@@ -203,7 +203,7 @@ int main(void)
         last_packet_crc_good_count = 1; // reset counter for new packet
       }
 
-      printf("Packet #: %u, Packet Size: %u, CRC OK, count: %d\r\n", packet_number, data_len, last_packet_crc_good_count); 
+      printf("Packet #: %u, CRC OK, count: %d\r\n", packet_number, last_packet_crc_good_count);
       // only write to flash once per the packet
       if(last_packet_crc_good_count == 1)
       {
@@ -214,14 +214,39 @@ int main(void)
 
         }
       }
-      // Start flashing here
-      ota_flash_write(flash_pointer, &rx_buff[3], TX_DATA_SIZE);
-      HAL_IWDG_Refresh(&hiwdg);
-      flash_pointer+=TX_DATA_SIZE;
-      // ACK
-      HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);
-      rx_complete_flag = 0;
-      if(packet_number >= total_packets){
+      printf("Packet %u CRC OK (count=%d)\r\n",
+        packet_number, last_packet_crc_good_count);
+      
+      if(last_packet_crc_good_count == 3)
+      {
+        printf("Packet %u confirmed (3/3)\r\n", packet_number);
+
+        // First paacket erase flash
+        if (packet_number == 0)
+        {
+          ota_flash_erase_staging();
+        }
+
+        // Write ONLY once
+        ota_flash_write(flash_pointer, &rx_buff[3], TX_DATA_SIZE);
+        flash_pointer += TX_DATA_SIZE;
+
+        // Optional but GOOD (keep watchdog safe)
+        HAL_IWDG_Refresh(&hiwdg);
+
+        // Send ACK
+        HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);
+
+        // Reser counter
+        last_packet_crc_good_count = 0;
+     }
+     else
+    {
+      // Ask ESP to resend 
+      HAL_UART_Transmit(&huart1, &nack, 1, HAL_MAX_DELAY);
+    }
+    rx_complete_flag = 0;
+      if(packet_number >= total_packets - 1){
         // Then we are at final chunk
         flash_pointer = FLASH_STAGING_START;
         HAL_IWDG_Refresh(&hiwdg);
