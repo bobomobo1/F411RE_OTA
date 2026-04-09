@@ -141,11 +141,15 @@ int main(void)
   printf("Flag: %X\r\n", flag);
   uint16_t flash_packet_number = *(uint16_t*)FLASH_SIZE_START;
   printf("Number of packets: %d\r\n", flash_packet_number);
+  uint32_t stage_valid_count = *(uint32_t*)FLASH_VALID_COUNT_START;
+  printf("Number valid attempts: %d\r\n", stage_valid_count);
   if (flag == valid_flag){ // 'Valid'
     ota_move_to_main(flash_packet_number);
     ota_flash_erase_sector(FLASH_FLAG_SECTOR); // Reset flags  
     ota_flash_write(FLASH_FLAG_START, (uint8_t*)&done_flag, sizeof(done_flag));
     ota_flash_jump(FLASH_MAIN_START);
+  } else if(flag == pending_flag){
+    ota_flash_jump(FLASH_STAGING_START);
   } else if (flag == done_flag){ // Finished so we should just be jumping into main
     ota_flash_jump(FLASH_MAIN_START);
   } else if(flag == reset_flag){ // We just reset from main
@@ -214,6 +218,7 @@ int main(void)
       HAL_UART_Transmit(&huart1, &ack, 1, HAL_MAX_DELAY);
       rx_complete_flag = 0;
       if(packet_number >= total_packets){
+        stage_valid_count = 0;
         // Then we are at final chunk
         flash_pointer = FLASH_STAGING_START;
         HAL_IWDG_Refresh(&hiwdg);
@@ -221,6 +226,7 @@ int main(void)
         ota_flash_erase_sector(FLASH_FLAG_SECTOR);
         ota_flash_write(FLASH_FLAG_START, (uint8_t*)&pending_flag, sizeof(pending_flag));
         ota_flash_write(FLASH_SIZE_START, (uint8_t*)&packet_number, sizeof(packet_number)); // Put packet number into flash to use later
+        ota_flash_write(FLASH_VALID_COUNT_START, (uint8_t*)&stage_valid_count, sizeof(uint32_t)); // Put packet number into flash to use later
         ota_flash_jump(FLASH_STAGING_START);
       }
     }

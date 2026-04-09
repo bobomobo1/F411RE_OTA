@@ -42,6 +42,7 @@ void ota_flash_write(uint32_t addr, uint8_t *data, uint16_t len){
         if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr + word_count*4, last_word)!=HAL_OK){
             // Handle errror
             printf("ERROR FLASHING\r\n");
+            HAL_FLASH_Lock();
             return;
         }
     }
