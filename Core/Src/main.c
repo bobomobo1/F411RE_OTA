@@ -190,6 +190,7 @@ int main(void)
           HAL_UART_Transmit(&huart1, &stop_send_ack, 1, HAL_MAX_DELAY); // Stop send ack
           bad_packet_count = 0;
           flash_pointer = FLASH_STAGING_START;
+          ota_flash_jump(FLASH_MAIN_START);
           continue; // Leave loop
         }
         HAL_UART_Transmit(&huart1, &nack, 1, HAL_MAX_DELAY); // NACK
