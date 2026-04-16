@@ -133,7 +133,6 @@ int main(void)
     // Handle it
     printf("Our Firmware Failed\r\n");
     __HAL_RCC_CLEAR_RESET_FLAGS();
-    ota_flash_erase_sector(FLASH_STAGING_SECTOR); // Firmware is bad so erase
     ota_flash_erase_sector(FLASH_FLAG_SECTOR); // Reset flags  
   }
   // Check flag (just for testing right now)
