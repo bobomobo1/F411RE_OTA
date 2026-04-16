@@ -14,7 +14,7 @@ void ota_flash_erase_sector(uint8_t eraseSector){
     erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
     erase.Sector = eraseSector;
     erase.NbSectors = 1;
-    if(HAL_FLASHEx_Erase(&erase, &error)!=HAL_OK){ // May need to swtich to IT 
+    if(HAL_FLASHEx_Erase_IT(&erase)!=HAL_OK){ // May need to swtich to IT 
         // Handle error
         printf("Error Erasing flash\r\n");
         HAL_FLASH_Lock();
@@ -31,7 +31,7 @@ void ota_flash_write(uint32_t addr, uint8_t *data, uint16_t len){
     uint32_t *word_data = (uint32_t*)data;
     // Flash 4 bytes (32-bit word) at a time
     for(uint16_t i = 0; i < word_count; i++){
-        HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr + i*4, word_data[i]);
+        HAL_FLASH_Program_IT(FLASH_TYPEPROGRAM_WORD, addr + i*4, word_data[i]);
     }
     // Flash remaining bytes if len is not multiple of 4
     if(remaining_bytes){
@@ -39,7 +39,7 @@ void ota_flash_write(uint32_t addr, uint8_t *data, uint16_t len){
         for(uint16_t i=0; i<remaining_bytes; i++){
             ((uint8_t*)&last_word)[i] = data[word_count*4 + i];
         }
-        if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr + word_count*4, last_word)!=HAL_OK){
+        if(HAL_FLASH_Program_IT(FLASH_TYPEPROGRAM_WORD, addr + word_count*4, last_word)!=HAL_OK){
             // Handle errror
             printf("ERROR FLASHING\r\n");
             HAL_FLASH_Lock();
