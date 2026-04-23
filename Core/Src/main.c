@@ -58,6 +58,7 @@ const uint8_t nack = 0x1F;
 const uint8_t stop_send_ack = 0x1E;
 uint8_t rx_buff[TX_CHUNK_SIZE]; 
 volatile uint8_t rx_complete_flag = 0; 
+volatile uint8_t switch_to_main_flag = 0;
 uint8_t rx_byte;
 uint8_t rx_index = 0;
 typedef enum {WAIT_START_1, WAIT_START_2, WAIT_OTA_SEQUENCE, RECEIVE_PACKET} rx_state_t; // State machine for rx_packets
@@ -75,6 +76,7 @@ static uint8_t bad_packet_count = 0;
 static uint16_t last_packet_number = 0xFFFF;
 
 uint8_t ota_start_count = 0;
+uint8_t ota_main_count = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -165,6 +167,12 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     HAL_IWDG_Refresh(&hiwdg);
+    if(switch_to_main_flag){
+      ota_flash_erase_sector(FLASH_FLAG_SECTOR); // Reset flags  
+      ota_flash_write(FLASH_FLAG_START, (uint8_t*)&done_flag, sizeof(done_flag));
+      switch_to_main_flag = 0;
+      ota_flash_jump(FLASH_MAIN_START);
+    }
     if(rx_complete_flag)
     {
       HAL_IWDG_Refresh(&hiwdg);
@@ -484,6 +492,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
           if(ota_start_count >= 6) {
             HAL_UART_Transmit(&huart1, &ready_response, 1, HAL_MAX_DELAY);
             rx_state = WAIT_START_1; // Ready for real packets
+          }
+        } else if(rx_byte == TX_START_BOOTLOADER_HEX){
+          ota_main_count++;
+          if(ota_main_count >=6){
+            switch_to_main_flag = 1;
+            rx_state = WAIT_START_1;
           }
         } else {
           // Not OTA start
