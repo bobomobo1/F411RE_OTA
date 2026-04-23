@@ -136,6 +136,7 @@ int main(void)
     printf("Our Firmware Failed\r\n");
     __HAL_RCC_CLEAR_RESET_FLAGS();
     ota_flash_erase_sector(FLASH_FLAG_SECTOR); // Reset flags  
+    ota_flash_write(FLASH_FLAG_START, (uint8_t*)&reset_flag, sizeof(reset_flag));
   }
   // Check flag (just for testing right now)
   uint32_t flag = *(uint32_t*)FLASH_FLAG_START; 
@@ -202,7 +203,7 @@ int main(void)
           HAL_UART_Transmit(&huart1, &stop_send_ack, 1, HAL_MAX_DELAY); // Stop send ack
           bad_packet_count = 0;
           flash_pointer = FLASH_STAGING_START;
-          ota_flash_jump(FLASH_MAIN_START);
+          //ota_flash_jump(FLASH_MAIN_START);
           continue; // Leave loop
         }
         HAL_UART_Transmit(&huart1, &nack, 1, HAL_MAX_DELAY); // NACK
