@@ -481,7 +481,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       case WAIT_OTA_SEQUENCE:
         if(rx_byte == TX_START_OTA_HEX) {
           ota_start_count++;
-          if(ota_start_count >= 7) {
+          if(ota_start_count >= 6) {
             HAL_UART_Transmit(&huart1, &ready_response, 1, HAL_MAX_DELAY);
             rx_state = WAIT_START_1; // Ready for real packets
           }
