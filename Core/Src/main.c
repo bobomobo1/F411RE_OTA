@@ -168,6 +168,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
     HAL_IWDG_Refresh(&hiwdg);
     if(switch_to_main_flag){
+      HAL_UART_Transmit(&huart1, &ready_response, 1, HAL_MAX_DELAY);
       ota_flash_erase_sector(FLASH_FLAG_SECTOR); // Reset flags  
       ota_flash_write(FLASH_FLAG_START, (uint8_t*)&done_flag, sizeof(done_flag));
       switch_to_main_flag = 0;
